@@ -16,11 +16,13 @@ Por enquanto foi testado apenas em lâmpadas TAPO [modelo L530E](https://www.ama
 ## Instalando como lib
 
 * PIP:
+
 ```shell
 pip install git+https://github.com/edvitor13/tplink.git
 ```
 
 * Poetry:
+
 ```shell
 poetry add git+https://github.com/edvitor13/tplink.git
 ```
@@ -90,6 +92,25 @@ Também é possível realizar estas ações de forma encadeada:
         .turn_off()
 )
 ```
+
+3. Suporte para execução assíncrona, inicie com o método "begin_async_mode" e termine com "run_async_mode" para executar:
+
+```py
+(
+    lamp
+        .begin_async_mode()
+        .set_color_rgb(255, 0, 255)
+        .turn_on()
+        .set_color_rgbhex(lamp.Colors.RED)
+        .sleep(10)
+        .turn_off()
+        .run_async_mode()
+)
+```
+
+Nesse formato a execução acontece em uma outra thread, assim, o fluxo não será travado.
+
+
 
 ## Cores
 

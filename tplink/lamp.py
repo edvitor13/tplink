@@ -5,12 +5,14 @@ from kasa.exceptions import AuthenticationException
 import time
 import colorsys
 
+from .async_support import AsyncSupport
+
 
 class LampException(Exception):
     pass
 
 
-class Lamp():
+class Lamp(AsyncSupport):
 
     class Colors:
         RED: str = "#ff0000"
@@ -42,6 +44,7 @@ class Lamp():
         self._lamps: list[SmartBulb] = []
         self._last_hsv_color: tuple = tuple()
         self._search_lamps(label, model, username, password)
+        super().__init__()
     
 
     @property
@@ -78,19 +81,22 @@ class Lamp():
     def is_off(self) -> tuple[int, int, int]:
         self.update()
         return self.lamp.is_off # type: ignore
-
-
-    def sleep(self, seconds: float) -> Lamp:
-        time.sleep(seconds)
-        return self
     
 
+    @AsyncSupport._track_async_mode
     def all_lamps(self) -> list[SmartBulb]:
         for l in self._lamps:
             self.__loop.run_until_complete(l.update())
         return self._lamps
 
 
+    @AsyncSupport._track_async_mode
+    def sleep(self, seconds: float) -> Lamp:
+        time.sleep(seconds)
+        return self
+
+
+    @AsyncSupport._track_async_mode
     def alternate_turn_on_off(self, times: int, sleep_ms: int = 100) -> Lamp:
         if not self.lamp:
             return self
@@ -103,6 +109,7 @@ class Lamp():
         return self
     
     
+    @AsyncSupport._track_async_mode
     def blink(self, times: int, sleep_ms: int = 0, step: int = 15, min: int = 1, max: int = 100, end_with_start: bool = True) -> Lamp:
         if not self.lamp:
             return self
@@ -114,24 +121,29 @@ class Lamp():
         return self
 
 
+    @AsyncSupport._track_async_mode
     def set_last_color(self, transition_ms: int | None = None) -> Lamp:
         return self.__set_color(*[int(n) for n in self._last_hsv_color], transition_ms=transition_ms)
 
 
+    @AsyncSupport._track_async_mode
     def set_color_rgbhex(self, hex_color: str, transition_ms: int | None = None) -> Lamp:
         hsv: tuple[float, float, float] = self.__hex_to_hsv(hex_color)
         return self.__set_color(*[int(n) for n in hsv], transition_ms=transition_ms)
 
 
+    @AsyncSupport._track_async_mode
     def set_color_rgb(self, r: float, g: float, b: float, transition_ms: int | None = None) -> Lamp:
         hsv: tuple[float, float, float] = self.__rgb_to_hsv(r, g, b)
         return self.__set_color(*[int(n) for n in hsv], transition_ms=transition_ms)
 
-
+    
+    @AsyncSupport._track_async_mode
     def set_color_hsv(self, h: int, s: int, v: int, transition_ms: int | None = None) -> Lamp:
         return self.__set_color(h, s, v, transition_ms=transition_ms)
 
 
+    @AsyncSupport._track_async_mode
     def update(self) -> Lamp:
         if not self.lamp:
             return self
@@ -139,6 +151,7 @@ class Lamp():
         return self
 
 
+    @AsyncSupport._track_async_mode
     def turn_on(self) -> Lamp:
         if not self.lamp:
             return self
@@ -146,6 +159,7 @@ class Lamp():
         return self
 
     
+    @AsyncSupport._track_async_mode
     def turn_off(self) -> Lamp:
         if not self.lamp:
             return self
@@ -153,6 +167,7 @@ class Lamp():
         return self
 
     
+    @AsyncSupport._track_async_mode
     def set_brightness(self, percentage: int = 100, sleep_ms: int | None = None, step: int = 1) -> Lamp:
         if not self.lamp:
             return self
