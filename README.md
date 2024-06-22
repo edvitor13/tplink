@@ -13,6 +13,14 @@ Por enquanto foi testado apenas em lâmpadas TAPO [modelo L530E](https://www.ama
 * Para instalar via pip: (no diretório do projeto)
   * `python -m pip install--no-cache-dir-r requirements.txt`
 
+## Instalando como lib
+
+* PIP:
+  * `pip install git+https://github.com/edvitor13/tplink.git `
+
+* Poetry:
+  * `poetry add git+https://github.com/edvitor13/tplink.git `
+
 ## Exemplos de uso:
 
 Utilizando o modelo `L530E` como base.
