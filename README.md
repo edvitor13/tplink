@@ -16,10 +16,14 @@ Por enquanto foi testado apenas em lâmpadas TAPO [modelo L530E](https://www.ama
 ## Instalando como lib
 
 * PIP:
-  * `pip install git+https://github.com/edvitor13/tplink.git `
+```shell
+pip install git+https://github.com/edvitor13/tplink.git
+```
 
 * Poetry:
-  * `poetry add git+https://github.com/edvitor13/tplink.git `
+```shell
+poetry add git+https://github.com/edvitor13/tplink.git
+```
 
 ## Exemplos de uso:
 
