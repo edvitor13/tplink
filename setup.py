@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='tplink',
-    version='0.1.0b1',
+    version='0.3.0b1',
     author='Vitor Gabriel',
     author_email='edvitor13@hotmail.com',
     packages=['tplink'],

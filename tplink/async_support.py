@@ -12,10 +12,24 @@ class AsyncSupport():
         self.__async_mode_running: bool = False
         self.__async_sequence: list[Callable] = []
         self.__async_last_error: Exception | None = None
-
     
+    
+    def __enter__(self):
+        self.begin_async_mode()
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.run_async_mode()
+        return False
+    
+
     def is_async_mode(self) -> bool:
         return self.__async_mode
+    
+
+    def is_running_async_mode(self) -> bool:
+        return self.__async_mode_running
     
 
     def add_async_sequence(self, call: Callable) -> Self:
@@ -53,7 +67,7 @@ class AsyncSupport():
     @staticmethod
     def _track_async_mode(func):
         def inner_wrapper(self, *args, **kwargs):
-            if self.is_async_mode():
+            if self.is_async_mode() and not self.is_running_async_mode():
                 self.add_async_sequence(partial(func, self, *args, **kwargs))
                 return self
             return func(self, *args, **kwargs)

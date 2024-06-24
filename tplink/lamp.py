@@ -1,9 +1,12 @@
 from __future__ import annotations
 import asyncio
-from kasa import Discover, Credentials, SmartBulb
-from kasa.exceptions import AuthenticationException
+from typing import Any
 import time
 import colorsys
+from hashlib import md5
+
+from kasa import Discover, Credentials, SmartBulb
+from kasa.exceptions import AuthenticationException
 
 from .async_support import AsyncSupport
 
@@ -13,6 +16,8 @@ class LampException(Exception):
 
 
 class Lamp(AsyncSupport):
+
+    _lamps: dict[str, list[SmartBulb]] = dict()
 
     class Colors:
         RED: str = "#ff0000"
@@ -38,15 +43,22 @@ class Lamp(AsyncSupport):
         AQUA: str = "#00ffff"
 
 
-    def __init__(self, username: str, password: str, label: str | None = None, model: str | None = None):
+    def __init__(
+        self, 
+        username: str, 
+        password: str, 
+        label: str | None = None, 
+        model: str | None = None, 
+        force_research: bool = False
+    ):
         self.lamp: None | SmartBulb = None
-        self.__loop = asyncio.get_event_loop()
-        self._lamps: list[SmartBulb] = []
+        self.__loop = asyncio.new_event_loop()
         self._last_hsv_color: tuple = tuple()
-        self._search_lamps(label, model, username, password)
+        
+        self._search_lamps(label, model, username, password, force_research)
         super().__init__()
     
-
+    
     @property
     def username(self) -> str:
         self.update()
@@ -81,13 +93,6 @@ class Lamp(AsyncSupport):
     def is_off(self) -> tuple[int, int, int]:
         self.update()
         return self.lamp.is_off # type: ignore
-    
-
-    @AsyncSupport._track_async_mode
-    def all_lamps(self) -> list[SmartBulb]:
-        for l in self._lamps:
-            self.__loop.run_until_complete(l.update())
-        return self._lamps
 
 
     @AsyncSupport._track_async_mode
@@ -147,7 +152,7 @@ class Lamp(AsyncSupport):
     def update(self) -> Lamp:
         if not self.lamp:
             return self
-        self.__loop.run_until_complete(self.lamp.update())
+        self.__run_in_loop(self.lamp.update())
         return self
 
 
@@ -155,7 +160,7 @@ class Lamp(AsyncSupport):
     def turn_on(self) -> Lamp:
         if not self.lamp:
             return self
-        self.__loop.run_until_complete(self.lamp.turn_on())
+        self.__run_in_loop(self.lamp.turn_on())
         return self
 
     
@@ -163,7 +168,7 @@ class Lamp(AsyncSupport):
     def turn_off(self) -> Lamp:
         if not self.lamp:
             return self
-        self.__loop.run_until_complete(self.lamp.turn_off())
+        self.__run_in_loop(self.lamp.turn_off())
         return self
 
     
@@ -183,7 +188,7 @@ class Lamp(AsyncSupport):
         diff = brightness - percentage
         
         if sleep_ms is None or diff == 0:
-            self.__loop.run_until_complete(self.lamp.set_brightness(percentage))
+            self.__run_in_loop(self.lamp.set_brightness(percentage))
             return self
         
         for t in range(0, abs(diff), step):
@@ -193,19 +198,21 @@ class Lamp(AsyncSupport):
                 brightness -= step
 
             try:
-                self.__loop.run_until_complete(self.lamp.set_brightness(brightness))
+                self.__run_in_loop(self.lamp.set_brightness(brightness))
             except:
                 continue
             self.sleep(sleep_ms/1000)
 
-        self.__loop.run_until_complete(self.lamp.set_brightness(percentage))
+        self.__run_in_loop(self.lamp.set_brightness(percentage))
         return self
     
 
-    def _search_lamps(self, label: str | None, model: str | None, username: str, password: str):
+    def _search_lamps(self, label: str | None, model: str | None, username: str, password: str, force_research: bool = False):
+        _userpasshash: str = md5(f"{username}{password}".encode()).hexdigest()
+        
         attempts: int = 0
         while True:
-            found_devices = self.__loop.run_until_complete(
+            _found_devices = self.__run_in_loop(
                 Discover.discover(
                     credentials=Credentials(
                         username=username,
@@ -214,13 +221,20 @@ class Lamp(AsyncSupport):
                 )
             )
             
-            if found_devices or attempts >= 3:
+            if _found_devices or attempts >= 3:
+                if type(_found_devices) is dict:
+                    found_devices = list(_found_devices.values())
+                else:
+                    found_devices = _found_devices
                 break
+                
             attempts += 1
 
+        Lamp._lamps[_userpasshash] = found_devices
+
         devices = list()
-        for d in found_devices.values():
-            self.__loop.run_until_complete(d.update())
+        for d in found_devices:
+            self.__run_in_loop(d.update())
             if not d.is_bulb:
                 continue
             if model and model.lower() != d.model.lower():
@@ -232,7 +246,6 @@ class Lamp(AsyncSupport):
         if not devices:
             raise LampException("No lamps found for these parameters")
 
-        self._lamps = devices
         if devices:
             self.lamp = devices[0]
             self._last_hsv_color = self.lamp.hsv.hue, self.lamp.hsv.saturation, self.lamp.hsv.value # type: ignore
@@ -243,7 +256,7 @@ class Lamp(AsyncSupport):
             return self
         self.update()
         self._last_hsv_color = self.lamp.hsv.hue, self.lamp.hsv.saturation, self.lamp.hsv.value # type: ignore
-        self.__loop.run_until_complete(self.lamp.set_hsv(h, s, v, transition=transition_ms))
+        self.__run_in_loop(self.lamp.set_hsv(h, s, v, transition=transition_ms))
         self.update()
         return self
     
@@ -270,3 +283,7 @@ class Lamp(AsyncSupport):
         h, s, v = h / 360.0, s / 100.0, v / 100.0
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         return (int(r * 255), int(g * 255), int(b * 255))
+    
+
+    def __run_in_loop(self, generator) -> Any:
+        return self.__loop.run_until_complete(generator)
